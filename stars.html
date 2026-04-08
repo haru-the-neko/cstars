@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>for czarina</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+  }
+
+  body {
+    background: #07080f;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, serif;
+    padding: 1rem;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .card {
+    background: #0b0d1c;
+    border-radius: clamp(12px, 3vw, 20px);
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .header {
+    text-align: center;
+    padding: clamp(1.5rem, 5vw, 3rem) 1rem clamp(0.25rem, 1vw, 0.5rem);
+  }
+
+  .subtitle {
+    font-size: clamp(10px, 2.2vw, 12px);
+    color: #a08840;
+    letter-spacing: 0.22em;
+    text-transform: lowercase;
+    font-family: sans-serif;
+    margin-bottom: 6px;
+  }
+
+  .name {
+    font-size: clamp(22px, 6vw, 34px);
+    font-weight: normal;
+    color: #f5d77a;
+    letter-spacing: 0.07em;
+  }
+
+  .hint {
+    font-size: clamp(10px, 2vw, 12px);
+    color: #4a3e20;
+    letter-spacing: 0.06em;
+    font-family: sans-serif;
+    margin-top: 6px;
+  }
+
+  #sky {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    margin: clamp(0.5rem, 2vw, 1rem) clamp(0.5rem, 3vw, 1.5rem) 0;
+  }
+
+  #lines-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+
+  .bg-dot {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .star-point {
+    position: absolute;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.85; transform: translate(-50%,-50%) scale(1); }
+    50% { opacity: 0.45; transform: translate(-50%,-50%) scale(0.85); }
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .star-point.active svg polygon {
+    filter: drop-shadow(0 0 5px #f5d77a);
+    opacity: 1 !important;
+  }
+
+  .msg-area {
+    min-height: clamp(70px, 15vw, 100px);
+    padding: clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 5vw, 2.5rem) clamp(1.5rem, 5vw, 3rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #msg {
+    font-size: clamp(13px, 3.2vw, 16px);
+    color: #6b5a2e;
+    font-style: italic;
+    line-height: 1.75;
+    transition: opacity 0.25s;
+    font-family: sans-serif;
+    max-width: 36ch;
+  }
+
+  #msg.lit {
+    color: #e8c95a;
+    font-style: normal;
+    animation: msgIn 0.4s ease forwards;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="header">
+      <p class="subtitle">a constellation for</p>
+      <h1 class="name">Czarina</h1>
+      <p class="hint">tap a star ✦</p>
+    </div>
+    <div id="sky">
+      <svg id="lines-svg"></svg>
+    </div>
+    <div class="msg-area">
+      <p id="msg">✦</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const thoughts = [
+  "you say exactly what you mean, and i love that about you",
+  "being around you feels like coming home",
+  "you've been through a lot and it never broke you — that's not nothing, that's everything",
+  "i see when you're carrying something heavy, even when you don't say a word",
+  "you try to protect the people you love from your weight — but i want to carry it with you",
+  "you are so much stronger than you give yourself credit for",
+  "the way you talk — honest, direct, real — it's one of my favorite things",
+  "i notice you even in the quiet moments, when you're just being you",
+  "you don't have to hold it all together all the time, not with me",
+  "whatever you're going through, i'm not going anywhere",
+  "you make ordinary moments feel like something worth remembering",
+  "i hope you know — even on your heaviest days — you are so deeply loved"
+];
+
+const pcts = [
+  [14,18],[30,52],[52,10],[70,42],[85,16],[20,76],
+  [46,66],[64,74],[88,58],[8,48],[50,30],[76,86]
+];
+
+const connLines = [
+  [0,1],[1,5],[5,6],[6,7],[7,8],[3,4],[3,10],[10,2],
+  [2,4],[9,1],[9,5],[10,11],[6,11],[0,9]
+];
+
+const sky = document.getElementById('sky');
+const svgEl = document.getElementById('lines-svg');
+const msg = document.getElementById('msg');
+let active = null;
+
+function starSize() {
+  const w = sky.offsetWidth;
+  if (w < 260) return 9;
+  if (w < 360) return 11;
+  if (w < 480) return 13;
+  return 15;
+}
+
+function build() {
+  sky.querySelectorAll('.star-point, .bg-dot').forEach(e => e.remove());
+  const w = sky.offsetWidth;
+  const h = sky.offsetHeight;
+  const sz = starSize();
+
+  for (let i = 0; i < 65; i++) {
+    const d = document.createElement('div');
+    const s = Math.random() * 1.6 + 0.5;
+    d.className = 'bg-dot';
+    d.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;width:${s}px;height:${s}px;background:#e8dba0;opacity:${(Math.random()*0.2+0.05).toFixed(2)};`;
+    sky.appendChild(d);
+  }
+
+  const sizes = [0,2,4,2,0,2,4,2,0,2,4,0].map(v => sz + v);
+
+  pcts.forEach((p, i) => {
+    const el = document.createElement('div');
+    el.className = 'star-point';
+    const s = sizes[i];
+    el.style.left = p[0] + '%';
+    el.style.top = p[1] + '%';
+    el.style.animation = `twinkle ${2.4 + i*0.35}s ease-in-out infinite`;
+    el.style.animationDelay = `${i*0.28}s`;
+    el.innerHTML = `<svg width="${s}" height="${s}" viewBox="0 0 14 14" style="display:block"><polygon points="7,0.5 8.8,5 13.5,5 9.8,8.2 11.2,13.5 7,10.3 2.8,13.5 4.2,8.2 0.5,5 5.2,5" fill="#f5d77a" opacity="0.78"/></svg>`;
+    el.addEventListener('click', () => {
+      if (active) active.classList.remove('active');
+      active = el;
+      el.classList.add('active');
+      msg.style.opacity = '0';
+      msg.classList.remove('lit');
+      setTimeout(() => {
+        msg.textContent = thoughts[i];
+        msg.classList.add('lit');
+        msg.style.opacity = '1';
+      }, 220);
+    });
+    sky.appendChild(el);
+  });
+
+  const lines = connLines.map(([a,b]) => {
+    const ax = pcts[a][0]/100*w, ay = pcts[a][1]/100*h;
+    const bx = pcts[b][0]/100*w, by = pcts[b][1]/100*h;
+    return `<line x1="${ax}" y1="${ay}" x2="${bx}" y2="${by}" stroke="#f5d77a" stroke-width="0.5" opacity="0.14"/>`;
+  }).join('');
+  svgEl.innerHTML = lines;
+}
+
+build();
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(build, 100);
+});
+</script>
+</body>
+</html>
